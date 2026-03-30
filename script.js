@@ -197,4 +197,9 @@ const defaultConfig = {
       document.getElementById('result-section').classList.remove('show');
       hideError();
     });
+const resultSection = document.getElementById('result-section');
+
+if (resultSection) {
+  resultSection.classList.add('show');
+}
   </script>
