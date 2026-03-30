@@ -1,126 +1,200 @@
 const defaultConfig = {
-    page_title: "Mutterschutzrechner",
+    page_title: "Feiertagszuschlagsrechner",
     calculate_button: "Berechnen",
     reset_button: "Zurücksetzen",
     primary_color: "#006e80",
-    secondary_color: "#008496"
+    secondary_color: "#008496",  
+
 };
 
 // SDK / Config
-async function onConfigChange(config) {
-    const pageTitle = config.page_title || defaultConfig.page_title;
-    const calculateButton = config.calculate_button || defaultConfig.calculate_button;
-    const resetButton = config.reset_button || defaultConfig.reset_button;
-    const primaryColor = config.primary_color || defaultConfig.primary_color;
-    const secondaryColor = config.secondary_color || defaultConfig.secondary_color;
+    async function onConfigChange(config) {
+      const mainTitle = document.getElementById('main-title');
+      const subtitle = document.getElementById('subtitle');
+      const calculateBtn = document.getElementById('calculate-btn');
+      const resetBtn = document.getElementById('reset-btn');
 
-    document.getElementById('page-title').textContent = pageTitle;
-    document.getElementById('calculate-btn').textContent = calculateButton;
-    document.getElementById('reset-btn').textContent = resetButton;
+      mainTitle.textContent = config.main_title || defaultConfig.main_title;
+      subtitle.textContent = config.subtitle || defaultConfig.subtitle;
+      calculateBtn.textContent = config.calculate_button || defaultConfig.calculate_button;
+      resetBtn.textContent = config.reset_button || defaultConfig.reset_button;
 
-    const checkboxInputs = document.querySelectorAll('input[type="checkbox"]');
-    checkboxInputs.forEach(input => { input.style.accentColor = primaryColor; });
+      const primaryColor = config.primary_color || defaultConfig.primary_color;
+      const secondaryColor = config.secondary_color || defaultConfig.secondary_color;
+      const backgroundColor = config.background_color || defaultConfig.background_color;
+      const textColor = config.text_color || defaultConfig.text_color;
+      const accentColor = config.accent_color || defaultConfig.accent_color;
+      const fontFamily = config.font_family || defaultConfig.font_family;
+      const fontSize = config.font_size || defaultConfig.font_size;
 
-    const calculateBtn = document.querySelector('.btn-calculate');
-    calculateBtn.style.background = primaryColor;
+      document.querySelector('.widget-container').style.background = backgroundColor;
+      mainTitle.style.color = textColor;
+      mainTitle.style.fontFamily = `${fontFamily}, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`;
+      mainTitle.style.fontSize = `${fontSize * 2.25}px`;
+      
+      subtitle.style.fontFamily = `${fontFamily}, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`;
+      subtitle.style.fontSize = `${fontSize * 1.125}px`;
 
-    const hoverStyle = document.getElementById('hover-style') || document.createElement('style');
-    hoverStyle.id = 'hover-style';
-    hoverStyle.textContent = `.btn-calculate:hover { background: ${secondaryColor} !important; }`;
-    if (!document.getElementById('hover-style')) document.head.appendChild(hoverStyle);
+      const labels = document.querySelectorAll('.holiday-pay-calculator-widget .form-group label');
+      labels.forEach(label => {
+        label.style.fontFamily = `${fontFamily}, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`;
+        label.style.fontSize = `${fontSize}px`;
+      });
 
-    const resultSection = document.querySelector('.result-section');
-    resultSection.style.background = primaryColor;
-}
+      const inputs = document.querySelectorAll('.holiday-pay-calculator-widget .form-group input');
+      inputs.forEach(input => {
+        input.style.fontFamily = `${fontFamily}, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`;
+        input.style.fontSize = `${fontSize}px`;
+      });
 
-function mapToCapabilities(config) {
-    return {
-        recolorables: [
-            { get: () => config.primary_color || defaultConfig.primary_color, set: value => window.elementSdk.setConfig({ primary_color: value }) },
-            { get: () => config.secondary_color || defaultConfig.secondary_color, set: value => window.elementSdk.setConfig({ secondary_color: value }) }
-        ],
-        borderables: [],
-        fontEditable: undefined,
-        fontSizeable: undefined
-    };
-}
+      calculateBtn.style.background = primaryColor;
+      calculateBtn.style.fontFamily = `${fontFamily}, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`;
+      calculateBtn.style.fontSize = `${fontSize}px`;
+      
+      resetBtn.style.background = accentColor;
+      resetBtn.style.fontFamily = `${fontFamily}, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`;
+      resetBtn.style.fontSize = `${fontSize}px`;
 
-function mapToEditPanelValues(config) {
-    return new Map([
-        ["page_title", config.page_title || defaultConfig.page_title],
-        ["calculate_button", config.calculate_button || defaultConfig.calculate_button],
-        ["reset_button", config.reset_button || defaultConfig.reset_button]
-    ]);
-}
+      document.querySelector('.final-result').style.background = primaryColor;
+      document.querySelector('.final-result-amount').style.fontFamily = `${fontFamily}, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`;
+      document.querySelector('.final-result-amount').style.fontSize = `${fontSize * 2.5}px`;
 
-if (window.elementSdk) {
-    window.elementSdk.init({ defaultConfig, onConfigChange, mapToCapabilities, mapToEditPanelValues });
-}
 
-// Hilfsfunktionen
-function formatDate(date) { return date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }); }
-function addWeeks(date, weeks) { const result = new Date(date); result.setDate(result.getDate() + (weeks*7)); return result; }
-function calculateDaysBetween(date1, date2) { return Math.ceil(Math.abs(date2 - date1) / (1000*60*60*24)); }
-
-// Berechnen
-document.getElementById('calculate-btn').addEventListener('click', function(e) {
-    e.preventDefault();
-    const etDate = document.getElementById('et-date').value;
-    const actualDate = document.getElementById('actual-date').value;
-    const multipleBirth = document.getElementById('multiple-birth').checked;
-    const prematureBirth = document.getElementById('premature-birth').checked;
-    const disability = document.getElementById('disability').checked;
-    const errorMessage = document.getElementById('error-message');
-    errorMessage.classList.remove('show');
-
-    if (!etDate) { errorMessage.textContent = 'Bitte geben Sie den errechneten Entbindungstermin ein.'; errorMessage.classList.add('show'); return; }
-
-    const etDateObj = new Date(etDate);
-    const startDate = addWeeks(etDateObj, -6);
-
-    let birthDateForCalculation = actualDate ? new Date(actualDate) : etDateObj;
-    let postBirthWeeks = 8;
-    let extraInfo = [];
-
-    if (multipleBirth || disability) { postBirthWeeks = 12; if (multipleBirth) extraInfo.push('Mehrlingsgeburt'); if (disability) extraInfo.push('Behinderung'); }
-    if (prematureBirth) { postBirthWeeks = 12; extraInfo.push('Medizinische Frühgeburt'); 
-        if (actualDate) {
-            const actualBirthDate = new Date(actualDate);
-            const unusedPreBirthDays = calculateDaysBetween(actualBirthDate, startDate);
-            if (actualBirthDate < startDate) {
-                const endDate = addWeeks(actualBirthDate, postBirthWeeks);
-                endDate.setDate(endDate.getDate() + unusedPreBirthDays);
-                document.getElementById('start-date').textContent = formatDate(startDate);
-                document.getElementById('end-date').textContent = formatDate(endDate);
-                const totalDays = calculateDaysBetween(startDate, endDate);
-                document.getElementById('total-duration').textContent = `${Math.floor(totalDays/7)} Wochen und ${totalDays%7} Tage`;
-                document.getElementById('info-message').textContent = `Besondere Umstände: ${extraInfo.join(', ')}. Bei Frühgeburt werden ${unusedPreBirthDays} Tage nicht genutzter Mutterschutz vor der Geburt zur Schutzfrist nach der Geburt hinzugefügt.`;
-                document.getElementById('results').classList.add('show');
-                return;
-            }
-        }
     }
 
-    const endDate = addWeeks(birthDateForCalculation, postBirthWeeks);
-    document.getElementById('start-date').textContent = formatDate(startDate);
-    document.getElementById('end-date').textContent = formatDate(endDate);
-    const totalDays = calculateDaysBetween(startDate, endDate);
-    document.getElementById('total-duration').textContent = `${Math.floor(totalDays/7)} Wochen und ${totalDays%7} Tage`;
+    if (window.elementSdk) {
+      window.elementSdk.init({
+        defaultConfig,
+        onConfigChange,
+        mapToCapabilities: (config) => ({
+          recolorables: [
+            {
+              get: () => config.primary_color || defaultConfig.primary_color,
+              set: (value) => {
+                config.primary_color = value;
+                window.elementSdk.setConfig({ primary_color: value });
+              }
+            },
+            {
+              get: () => config.secondary_color || defaultConfig.secondary_color,
+              set: (value) => {
+                config.secondary_color = value;
+                window.elementSdk.setConfig({ secondary_color: value });
+              }
+            },
+            {
+              get: () => config.background_color || defaultConfig.background_color,
+              set: (value) => {
+                config.background_color = value;
+                window.elementSdk.setConfig({ background_color: value });
+              }
+            },
+            {
+              get: () => config.text_color || defaultConfig.text_color,
+              set: (value) => {
+                config.text_color = value;
+                window.elementSdk.setConfig({ text_color: value });
+              }
+            },
+            {
+              get: () => config.accent_color || defaultConfig.accent_color,
+              set: (value) => {
+                config.accent_color = value;
+                window.elementSdk.setConfig({ accent_color: value });
+              }
+            }
+          ],
+          borderables: [],
+          fontEditable: {
+            get: () => config.font_family || defaultConfig.font_family,
+            set: (value) => {
+              config.font_family = value;
+              window.elementSdk.setConfig({ font_family: value });
+            }
+          },
+          fontSizeable: {
+            get: () => config.font_size || defaultConfig.font_size,
+            set: (value) => {
+              config.font_size = value;
+              window.elementSdk.setConfig({ font_size: value });
+            }
+          }
+        }),
+        mapToEditPanelValues: (config) => new Map([
+          ["main_title", config.main_title || defaultConfig.main_title],
+          ["subtitle", config.subtitle || defaultConfig.subtitle],
+          ["calculate_button", config.calculate_button || defaultConfig.calculate_button],
+          ["reset_button", config.reset_button || defaultConfig.reset_button]
+        ])
+      });
+    }
 
-    document.getElementById('info-message').textContent = extraInfo.length > 0
-        ? `Besondere Umstände: ${extraInfo.join(', ')}. Die Mutterschutzfrist nach der Geburt beträgt ${postBirthWeeks} Wochen.`
-        : 'Die Mutterschutzfrist beginnt 6 Wochen vor dem errechneten Entbindungstermin und endet 8 Wochen nach der Geburt.';
-    document.getElementById('results').classList.add('show');
-});
+    function formatCurrency(amount) {
+      return new Intl.NumberFormat('de-DE', {
+        style: 'currency',
+        currency: 'EUR',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      }).format(amount);
+    }
 
-// Zurücksetzen
-document.getElementById('reset-btn').addEventListener('click', function(e) {
-    e.preventDefault();
-    document.getElementById('et-date').value = '';
-    document.getElementById('actual-date').value = '';
-    document.getElementById('multiple-birth').checked = false;
-    document.getElementById('premature-birth').checked = false;
-    document.getElementById('disability').checked = false;
-    document.getElementById('results').classList.remove('show');
-    document.getElementById('error-message').classList.remove('show');
-});
+    function formatPercentage(value) {
+      return new Intl.NumberFormat('de-DE', {
+        style: 'percent',
+        minimumFractionDigits: 1,
+        maximumFractionDigits: 1
+      }).format(value / 100);
+    }
+
+    function showError(message) {
+      const errorDiv = document.getElementById('error-message');
+      errorDiv.textContent = message;
+      errorDiv.classList.add('show');
+      document.getElementById('result-section').classList.remove('show');
+    }
+
+    function hideError() {
+      document.getElementById('error-message').classList.remove('show');
+    }
+
+    // Beispielwerte für Demonstration setzen
+    document.addEventListener('DOMContentLoaded', function() {
+      document.getElementById('hourly-wage').value = '15.00';
+      document.getElementById('holiday-percentage').value = '40';
+      document.getElementById('holiday-hours').value = '8';
+      
+      // Automatische Berechnung mit Beispielwerten
+      setTimeout(() => {
+        document.getElementById('calculator-form').dispatchEvent(new Event('submit'));
+      }, 500);
+    });
+
+    document.getElementById('calculator-form').addEventListener('submit', function(e) {
+      e.preventDefault();
+      hideError();
+
+      const hourlyWage = parseFloat(document.getElementById('hourly-wage').value);
+      const holidayPercentage = parseFloat(document.getElementById('holiday-percentage').value);
+      const holidayHours = parseFloat(document.getElementById('holiday-hours').value);
+
+      if (hourlyWage <= 0 || holidayPercentage < 0 || holidayHours <= 0) {
+        showError('Bitte geben Sie gültige positive Werte ein.');
+        return;
+      }
+
+      // Berechnung nach der angegebenen Formel:
+      // Brutto-Stundenlohn × Anzahl der Feiertagsarbeitsstunden × (100% + Prozentsatz Feiertagszuschlag)
+      const bonusFactor = (100 + holidayPercentage) / 100;
+      const totalWage = hourlyWage * holidayHours * bonusFactor;
+
+      document.getElementById('final-amount').textContent = formatCurrency(totalWage);
+
+      document.getElementById('result-section').classList.add('show');
+    });
+
+    document.getElementById('reset-btn').addEventListener('click', function() {
+      document.getElementById('calculator-form').reset();
+      document.getElementById('result-section').classList.remove('show');
+      hideError();
+    });
+  </script>
